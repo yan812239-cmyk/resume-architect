@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎓 资深校招求职专家 · L3 Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* --- 全局与色彩变量 --- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0f11; --surface:#16181c; --surface2:#1e2126; --surface3:#252830;
+  --border:rgba(255,255,255,0.08); --border-hi:rgba(255,255,255,0.18);
+  --text:#e8e6e0; --muted:#8a8880; --dim:#55534f;
+  --gold:#c9a84c; --gold-lt:#e8c97a;
+  --green:#4caf7a; --blue:#5c8ae0; --red:#e05c5c; --purple:#9d5ce0;
+  --r:10px; --r-sm:6px;
+}
+body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;font-size:14px;overflow:hidden}
+
+/* --- 顶部导航栏 --- */
+.hdr{padding:0 20px;height:64px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);flex-shrink:0;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-ico{width:32px;height:32px;background:linear-gradient(135deg,var(--blue) 0%,#2a5298 100%);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-name{font-family:'Noto Serif SC',serif;font-size:16px;font-weight:600;color:var(--text);}
+.logo-tag{font-size:11px;color:var(--purple);border:1px solid rgba(157,92,224,0.4);background:rgba(157,92,224,0.1);padding:2px 6px;border-radius:4px;margin-left:4px;}
+
+/* 多模型切换 UI */
+.hdr-center{display:flex;align-items:center;background:var(--surface2);border-radius:8px;border:1px solid var(--border);padding:4px 8px;gap:6px;}
+.mdl-sel{background:var(--surface3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:13px;outline:none;cursor:pointer;}
+.mdl-sel:focus{border-color:var(--blue);}
+.api-inp{background:transparent;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);padding:0 10px;font-size:13px;width:180px;font-family:monospace;outline:none;}
+.btn-icon{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:4px;transition:all .2s;}
+.btn-icon:hover{background:var(--surface3);color:var(--text);}
+
+.btn{padding:8px 16px;border-radius:var(--r-sm);font-size:13px;cursor:pointer;border:none;background:var(--surface2);color:var(--text);transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:var(--surface3);}
+.btn-gold{background:var(--gold);color:#1a1200;font-weight:500;}
+.btn-gold:hover{background:var(--gold-lt);transform:translateY(-1px);}
+.btn-gold:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+
+/* --- 页面布局 --- */
+.main{display:flex;flex:1;overflow:hidden;}
+.left{width:420px;min-width:320px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);flex-shrink:0;}
+.panel-hdr{padding:14px 18px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.upload-btn{font-size:12px;color:var(--blue);cursor:pointer;display:flex;align-items:center;gap:4px;}
+.resume-ta{flex:1;background:transparent;border:none;color:var(--text);padding:16px 18px;resize:none;outline:none;font-size:13px;line-height:1.7;}
+.jd-ta{flex:0.6;background:transparent;border:none;color:var(--text);padding:16px 18px;resize:none;outline:none;font-size:13px;line-height:1.7;}
+.panel-foot{padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface2);}
+
+/* 右侧对话区 */
+.right{flex:1;display:flex;flex-direction:column;background:var(--bg);}
+.chat{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px}
+.msg{display:flex;gap:12px;animation:up .3s ease;}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.av{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.msg.user .av{background:var(--surface3);color:var(--muted)}
+.msg.assistant .av{background:linear-gradient(135deg,var(--blue),#2a5298);color:#fff;font-weight:700}
+.bubble{padding:14px 18px;border-radius:var(--r);font-size:14px;line-height:1.7;background:var(--surface);border:1px solid var(--border);max-width:88%;}
+.msg.user .bubble{background:var(--surface2);}
+
+/* Agent 思维流 UI */
+.agent-logs{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.agent-step{padding:10px 14px;background:var(--surface2);border-left:3px solid var(--blue);border-radius:4px;font-size:12.5px;color:var(--muted);font-family:monospace;}
+.agent-step.search{border-left-color:var(--blue);}
+.agent-step.ats{border-left-color:var(--green);}
+.agent-step code{color:var(--gold-lt);background:var(--surface3);padding:2px 6px;border-radius:3px;}
+.agent-final{margin-top:16px;padding-top:16px;border-top:1px dashed var(--border);}
+.spinner{display:inline-block;animation:spin 1s linear infinite;}
+@keyframes spin{100%{transform:rotate(360deg)}}
+
+.inp-area{padding:16px 24px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:12px;align-items:center;}
+.msg-inp{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);padding:10px 16px;font-size:14px;outline:none;}
+.msg-inp:focus{border-color:var(--blue);}
+.toast{position:fixed;bottom:80px;right:24px;padding:12px 20px;background:#142619;border:1px solid var(--green);color:#80d4a0;border-radius:6px;display:none;z-index:999;}
+.toast.err{background:#2e1515;border-color:var(--red);color:#f09090}
+
+/* 设置弹窗 */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:400px;display:flex;flex-direction:column;gap:16px;}
+.modal h3{color:var(--text);margin-bottom:8px;}
+.modal label{font-size:12px;color:var(--muted);}
+.modal input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;outline:none;margin-top:4px;}
+
+/* Markdown 美化 */
+.bubble h3{color:var(--blue);margin:16px 0 8px;font-size:15px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.bubble h3:first-child{margin-top:0;}
+.bubble ul{padding-left:22px;margin:8px 0;}
+.bubble strong{color:var(--gold-lt);font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- 高级设置弹窗 -->
+<div class="modal-overlay" id="settingModal">
+  <div class="modal">
+    <h3>⚙️ 高级 API 设置</h3>
+    <p style="font-size:12px;color:var(--muted);">如果你使用代理服务器或中转API（如国内直连 OpenAI/Gemini），请在此处修改接口基地址。</p>
+    <div>
+      <label>接口基地址 (Base URL)</label>
+      <input type="text" id="customBaseUrl" placeholder="例如: https://api.chatanywhere.tech/v1/chat/completions" />
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:10px;">
+      <button class="btn" onclick="document.getElementById('settingModal').style.display='none'">取消</button>
+      <button class="btn btn-gold" onclick="saveSettings()">保存配置</button>
+    </div>
+  </div>
+</div>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="logo-ico">🎓</div>
+    <div class="logo-name">架构师 Agent</div>
+    <div class="logo-tag">多模型 L3</div>
+  </div>
+  
+  <div class="hdr-center">
+    <select class="mdl-sel" id="platformSel" onchange="switchPlatform()">
+      <option value="qwen">阿里通义千问</option>
+      <option value="deepseek">DeepSeek (深度求索)</option>
+      <option value="openai">OpenAI (ChatGPT)</option>
+      <option value="gemini">Google Gemini</option>
+    </select>
+    
+    <input class="api-inp" id="apiKey" type="password" placeholder="输入对应 API Key" />
+    
+    <select class="mdl-sel" id="modelSel" style="min-width:120px;color:var(--gold-lt);font-weight:bold;">
+      <!-- 选项由 JS 动态生成 -->
+    </select>
+    
+    <button class="btn-icon" onclick="document.getElementById('settingModal').style.display='flex'" title="自定义接口地址/代理设置">⚙️</button>
+  </div>
+
+  <button class="btn" onclick="clearHistory()">🗑 清空</button>
+</header>
+
+<div class="main">
+  <!-- 左侧面板 -->
+  <div class="left">
+    <div class="panel-hdr">
+      <span>📄 学生简历 (课设/社团/实习)</span>
+      <label class="upload-btn"><input type="file" accept=".pdf" style="display:none" onchange="loadPDF(this.files[0])">📎 上传 PDF</label>
+    </div>
+    <textarea class="resume-ta" id="resumeTA" placeholder="粘贴简历内容..."></textarea>
+    
+    <div class="panel-hdr" style="border-top:1px solid var(--border)"><span>🎯 目标校招/实习岗位 JD</span></div>
+    <textarea class="jd-ta" id="jdTA" placeholder="粘贴详细招聘 JD，以便 AI 提取核心能力模型..."></textarea>
+    
+    <div class="panel-foot">
+      <span id="wordCount" style="font-size:12px;color:var(--muted);">就绪</span>
+      <button class="btn btn-gold" onclick="startAgent('请执行全面诊断与架构重写')" id="agentBtn">✦ 启动架构师分析</button>
+    </div>
+  </div>
+
+  <!-- 右侧对话区 -->
+  <div class="right">
+    <div class="chat" id="chat">
+      <div style="text-align:center;color:var(--muted);margin:60px 0;" id="welcomeState">
+        <h2 style="color:var(--text);margin-bottom:12px;">👨‍💻 资深技术简历架构师</h2>
+        <p>支持 <strong>DeepSeek / GPT-4o / Qwen2.5</strong> 无缝切换。</p>
+        <p style="font-size:12px;margin-top:6px;">填入 Key 和简历后，点击下方按钮开始工业级重构：</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px;">
+          <button class="btn" onclick="startAgent('请执行全面诊断与架构重写')" style="border:1px solid var(--gold-lt);color:var(--gold-lt);background:rgba(232,201,122,0.1)">🚀 全面诊断与 STAR 重构</button>
+        </div>
+      </div>
+    </div>
+    <div class="inp-area">
+      <input class="msg-inp" id="msgInp" placeholder="或输入额外要求（如：针对量化金融方向优化）..." onkeydown="if(event.key==='Enter') startAgent(this.value)" />
+      <button class="btn btn-gold" onclick="startAgent(document.getElementById('msgInp').value)" id="sendBtn">发送</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// --- 0. 全球大模型 API 路由配置 ---
+const AI_PROVIDERS = {
+  qwen: { url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", models:["qwen-plus", "qwen-max", "qwen2.5-max", "qwen-turbo"] },
+  deepseek: { url: "https://api.deepseek.com/chat/completions", models: ["deepseek-chat"] },
+  openai: { url: "https://api.openai.com/v1/chat/completions", models:["gpt-4o", "gpt-4o-mini"] },
+  gemini: { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", models:["gemini-2.5-flash", "gemini-2.5-pro"] }
+};
+
+let CURRENT_BASE_URL = AI_PROVIDERS.qwen.url;
+
+function switchPlatform() {
+  const platform = document.getElementById('platformSel').value;
+  const models = AI_PROVIDERS[platform].models;
+  const sel = document.getElementById('modelSel');
+  sel.innerHTML = '';
+  models.forEach(m => {
+    let opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  document.getElementById('customBaseUrl').value = AI_PROVIDERS[platform].url;
+  CURRENT_BASE_URL = AI_PROVIDERS[platform].url;
+}
+
+function saveSettings() {
+  const customUrl = document.getElementById('customBaseUrl').value.trim();
+  if(customUrl) CURRENT_BASE_URL = customUrl;
+  document.getElementById('settingModal').style.display = 'none';
+  toast('⚙️ API 接口已更新', 'ok');
+}
+
+window.onload = () => switchPlatform();
+
+// --- 1. PDF 解析模块 ---
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function loadPDF(file){
+  if(!file) return;
+  toast('正在解析 PDF...');
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    let txt = '';
+    for(let i=1; i<=pdf.numPages; i++){
+      const pg = await pdf.getPage(i);
+      const content = await pg.getTextContent();
+      txt += content.items.map(it=>it.str).join(' ') + '\n';
+    }
+    document.getElementById('resumeTA').value = txt.trim().replace(/\s{3,}/g,'\n\n');
+    toast('PDF 解析成功！');
+  } catch(e) { toast('PDF 解析失败: ' + e.message, 'err'); }
+}
+
+// --- 2. 注入你提供的顶级结构化 Prompt (结合 L3 Agent 逻辑) ---
+const SYS = `# Role: 资深校招求职专家 & 技术简历架构师
+
+## Profile
+你是一位精通 500 强企业和头部互联网公司（如腾讯、华为、字节跳动）筛选逻辑的资深 HR 专家。你擅长挖掘在校生在【课设】、【社团】、【竞赛】及【零碎实习】中的高价值闪光点，并将其转化为工业界认可的专业表达。
+
+## Constraints (任务约束)
+1. **语言风格**：使用专业、简洁的职场用语。严禁使用“负责了...”、“参与了...”等弱动词。
+2. **术语准度**：针对通信工程（如 ADC 采样、信号处理）、金融量化（如 A 股因子、EasyTrader）或计算机领域，必须使用准确的技术术语。
+3. **字数控制**：每个 STAR 描述建议在 100-150 字之间，整体回复控制在 800 字以内。
+4. **结构要求**：必须先输出[Thinking Process]（思考过程），再输出诊断结果。
+
+## Agent Workflow (智能体工作流)
+为了给出最权威的诊断，你**必须**在分析前调用以下工具：
+1. 主动调用 \`search_industry_keywords\` 获取该岗位当前的工业界核心指标和加分项。
+2. 务必调用 \`simulate_ats_scoring\` 获取该简历在 HR 系统里的真实得分和缺失项。
+
+在获取完工具数据后，使用分隔符 \`---\` 清晰划分以下四个最终模块：
+1. **[Thinking Process]**: 结合工具搜到的行业趋势，分析 JD 核心需求与简历内容的 Gap，规划改写策略。
+2. **[ATS Score]**: 满分 100 分，根据子智能体打分、关键词匹配度和量化结果给出分值及点评。
+3. **[STAR Transformation]**: 挑选简历中 2-3 条经历进行深度重写。
+4. **[Critical Tips]**: 给出 3 条最能提高面试率的行动建议。
+
+## Detailed Standards (重写标准)
+- **Situation (情境)**: 简述背景（如：大三专业核心课设、针对 A 股短线交易）。
+- **Task (任务)**: 明确面临的技术挑战或具体目标。
+- **Action (行动)**: 强调“你是如何做的”。使用“基于...”、“通过...”、“利用...”引导，突出算法、工具（如 MATLAB, Simulink, vn.py）。
+- **Result (结果)**: **必须量化**。如：误差降低了 15%、回撤控制在 5% 以内、精度达到 18-bit。如果你不知道具体数据，请用 [XX数据] 占位。
+
+## Few-Shot (正反例对比)
+- **Bad Case**: 参与了学校的 ADC 课设，负责写代码，最后通过了测试。
+- **Good Case**: 【设计并实现基于 MATLAB 的 18-bit SAR ADC 性能计算系统】。针对静态指标分析难题，自主研发信号类型智能识别算法，实现 DNL/INL 曲线自动拟合。最终将指标计算耗时缩短 40%，计算精度偏差控制在 0.01LSB 以内。`;
+
+const toolsSchema =[
+  {
+    type: "function",
+    function: {
+      name: "search_industry_keywords",
+      description: "检索目标岗位最新的核心技能要求和行业趋势。",
+      parameters: {
+        type: "object",
+        properties: { "target_role": { type: "string" } },
+        required:["target_role"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "simulate_ats_scoring",
+      description: "扮演网申初筛算法，对简历的工业界匹配度进行客观打分。",
+      parameters: {
+        type: "object",
+        properties: { 
+          "resume_text": { type: "string" }, "target_role": { type: "string" }
+        },
+        required:["resume_text", "target_role"]
+      }
+    }
+  }
+];
+
+// 通用 LLM 请求封装
+async function callLLM(apiKey, model, messages, formatType, isSearch) {
+  const platform = document.getElementById('platformSel').value;
+  let payload = { model: model, messages: messages };
+  
+  if(platform === 'qwen' && isSearch) payload.enable_search = true;
+  if(formatType === 'json') payload.response_format = { type: "json_object" };
+
+  const res = await fetch(CURRENT_BASE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`API 报错: ${res.status} - ${await res.text()}`);
+  return await res.json();
+}
+
+const subAgents = {
+  search_industry_keywords: async (args, apiKey, model) => {
+    const prompt = `你是一个大厂校招情报员。总结出2026年"${args.target_role}"岗位的：1.必备硬技能底线 2.加分项 3.HR看重的软素质。简明扼要输出。`;
+    try {
+      const data = await callLLM(apiKey, model, [{ role: 'user', content: prompt }], 'text', true);
+      return { status: "success", insights: data.choices[0].message.content };
+    } catch (e) { return { status: "error", error: e.message }; }
+  },
+
+  simulate_ats_scoring: async (args, apiKey, model) => {
+    const prompt = `你是校招ATS初筛系统。请评估简历与"${args.target_role}"匹配度。没工作经验不扣分，缺量化数据扣10分，缺专业词汇扣15分。
+    必须且只能输出严格JSON，禁止Markdown：
+    {"ats_score": 整数, "readability": "优秀/一般/极差", "missing_basic_skills": ["词1"], "student_flaws": "硬伤指出"}`;
+    try {
+      const data = await callLLM(apiKey, model,[{ role: 'system', content: prompt }, { role: 'user', content: args.resume_text.substring(0, 4000) }], 'json', false);
+      return JSON.parse(data.choices[0].message.content); 
+    } catch (e) { return { ats_score: 75, error: "系统解析异常或模型不支持强制JSON" }; }
+  }
+};
+
+let history =[];
+
+// 主调度循环
+async function startAgent(customMsg = "") {
+  const key = document.getElementById('apiKey').value.trim();
+  const platform = document.getElementById('platformSel').value;
+  if(!key) return toast(`请填写 ${platform.toUpperCase()} 的 API Key`, 'err');
+  
+  const resume = document.getElementById('resumeTA').value.trim();
+  const jd = document.getElementById('jdTA').value.trim();
+  const instruction = customMsg || document.getElementById('msgInp').value;
+  if(!resume) return toast('请先输入简历内容！', 'err');
+
+  document.getElementById('msgInp').value = '';
+  document.getElementById('agentBtn').disabled = true;
+  document.getElementById('welcomeState') && (document.getElementById('welcomeState').style.display = 'none');
+
+  // 严格按照你要求的输入格式拼接：
+  let userContent = history.length === 0 ? 
+    `请开始分析以下内容：\n\n[目标 JD]:\n${jd || '未提供具体JD，请根据简历推测方向'}\n\n[原始简历]:\n${resume}\n\n[附加指令]:\n${instruction}` : 
+    instruction;
+
+  history.push({ role: 'user', content: userContent });
+  appendMsg('user', customMsg || instruction.substring(0,30)+"...");
+
+  const aEl = appendMsg('assistant', '');
+  const bub = aEl.querySelector('.bubble');
+  const logsDiv = document.createElement('div');
+  logsDiv.className = 'agent-logs';
+  bub.appendChild(logsDiv);
+  
+  const currentModel = document.getElementById('modelSel').value;
+  logsDiv.innerHTML += `<div class="agent-step"><span class="spinner">⚙️</span>[${platform}] 启动大脑，正在规划架构重写任务...</div>`;
+
+  let loopCount = 0;
+  try {
+    while (loopCount < 4) { 
+      let payload = {
+        model: currentModel,
+        messages: [{ role: 'system', content: SYS }, ...history],
+        tools: toolsSchema,
+        tool_choice: "auto"
+      };
+
+      const res = await fetch(CURRENT_BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const msg = data.choices[0].message;
+
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        history.push(msg); 
+        for (let tc of msg.tool_calls) {
+          const fnName = tc.function.name;
+          const args = JSON.parse(tc.function.arguments);
+          const icon = fnName === 'search_industry_keywords' ? '🌐' : '🤖';
+          
+          logsDiv.innerHTML += `<div class="agent-step">${icon} <strong>调用审查工具</strong>: <code>${fnName}</code> <span class="spinner">⏳</span></div>`;
+          document.getElementById('chat').scrollTop = 9999;
+
+          const result = await subAgents[fnName](args, key, currentModel);
+          history.push({ role: "tool", name: fnName, content: JSON.stringify(result), tool_call_id: tc.id });
+          logsDiv.innerHTML += `<div class="agent-step" style="border-left-color:var(--green)">✅ 数据已取回，主 Agent 融合分析中...</div>`;
+        }
+      } else {
+        history.push(msg);
+        const finalDiv = document.createElement('div');
+        finalDiv.className = 'agent-final';
+        finalDiv.innerHTML = fmt(msg.content);
+        bub.appendChild(finalDiv);
+        logsDiv.querySelectorAll('.spinner').forEach(s => s.remove());
+        break; 
+      }
+      loopCount++;
+    }
+  } catch (err) {
+    logsDiv.innerHTML += `<div class="agent-step" style="color:var(--red)">❌ 异常: ${err.message}</div>`;
+  } finally {
+    document.getElementById('agentBtn').disabled = false;
+    document.getElementById('chat').scrollTop = 9999;
+  }
+}
+
+function appendMsg(role, text) {
+  const m = document.createElement('div'); m.className = 'msg ' + role;
+  const av = document.createElement('div'); av.className = 'av'; av.textContent = role === 'user' ? '我' : 'Agent';
+  const bub = document.createElement('div'); bub.className = 'bubble';
+  if(text) bub.innerHTML = role === 'user' ? text : fmt(text);
+  m.appendChild(av); m.appendChild(bub);
+  document.getElementById('chat').appendChild(m);
+  return m;
+}
+
+function clearHistory(){ history=[]; document.getElementById('chat').innerHTML=''; }
+function toast(msg, type='ok'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
+
+// Markdown 解析器：特别优化了对 [Thinking Process] 等中括号标签的高亮显示
+function fmt(t){
+  if(!t) return '';
+  let h = t.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  
+  // 高亮显示 [Thinking Process],[ATS Score] 等核心标签
+  h = h.replace(/\[(Thinking Process|ATS Score|STAR Transformation|Critical Tips)\]/g, '<strong style="color:var(--purple);font-size:15px;">[$1]</strong>');
+  
+  h = h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h3>$1</h3>');
+  h = h.replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/gs, m => '<ul>'+m+'</ul>');
+  
+  // 处理分隔符 ---
+  h = h.replace(/^---$/gm, '<hr style="border:none;border-top:1px dashed var(--border);margin:16px 0;">');
+  
+  return h.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+}
+</script>
+</body>
+</html>
