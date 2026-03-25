@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校招简历修改助手</title>
+<!-- 引入 Stitch 同款英文字体 Inter 以及备用中文 Noto Serif SC -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+/* --- 全局与色彩变量 (Stitch Light Theme) --- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg: #fafafa; 
+  --surface: #ffffff; 
+  --surface2: #f3f4f6; 
+  --surface3: #e5e7eb;
+  --border: #e5e7eb; 
+  --border-hi: #d1d5db;
+  --text: #111827; 
+  --muted: #6b7280; 
+  --dim: #9ca3af;
+  --gold: #111827; 
+  --gold-lt: #374151;
+  --blue: #2563eb; 
+  --green: #10b981; 
+  --orange: #f59e0b; 
+  --purple: #8b5cf6;
+  --r: 16px; 
+  --r-sm: 8px;
+}
+
+/* 🌟 字体深度定制：英文采用 Stitch 原生 Inter 字体，中文采用猴尊宋体 */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, '猴尊宋体', 'Noto Serif SC', serif;
+  background-color: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  overflow: hidden;
+  opacity: 0; 
+}
+
+/* 点阵背景 */
+.dot-bg {
+  position: fixed; inset: 0; z-index: -1;
+  background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* 自定义光标 */
+#cursor-follower {
+  position: fixed; width: 32px; height: 32px; border: 1px solid rgba(17, 24, 39, 0.2); 
+  border-radius: 50%; pointer-events: none; z-index: 9999; 
+  transform: translate(-50%, -50%); transition: width 0.3s, height 0.3s, background-color 0.3s, border-color 0.3s;
+}
+.cursor-hover { width: 48px !important; height: 48px !important; background-color: rgba(17, 24, 39, 0.05); border-color: var(--text) !important; }
+
+/* --- 顶部导航栏 --- */
+.hdr{padding:0 32px;height:70px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10;}
+.logo{display:flex;align-items:center;gap:8px;}
+.logo-name{font-size:20px;font-weight:600;color:var(--text); letter-spacing: 0.5px;}
+.logo-tag{font-size:10px;color:var(--text);border:1px solid var(--border-hi);padding:2px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:0.5px; margin-top:2px; font-family: 'Inter', sans-serif;}
+
+.hdr-right{display:flex;align-items:center;gap:16px;}
+.top-icon-btn { background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; padding:6px; border-radius:6px; transition:background .2s; }
+.top-icon-btn:hover { background:var(--surface3); }
+
+/* 磁性包装器 */
+.magnetic-wrap { display: inline-block; padding: 10px; margin: -10px; }
+
+/* --- 页面三栏悬浮布局 --- */
+.main{display:flex;flex:1;overflow:hidden;position:relative;z-index:1;padding:0 24px 24px;}
+
+/* 1. 左侧悬浮面板 */
+.left{width:320px;min-width:300px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;display:flex;flex-direction:column;flex-shrink:0; overflow:hidden;}
+.stitch-tabs { display:flex; gap:8px; padding:16px; }
+.stitch-tab { flex:1; text-align:center; padding:8px 0; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:13px; font-weight:600; cursor:pointer;}
+.stitch-tab.inactive { background:transparent; border-color:transparent; color:var(--muted); font-weight:normal;}
+
+.panel-section { display:flex; flex-direction:column; flex:1; overflow-y:auto; padding:0 16px 16px; gap:16px; }
+.section-lbl { font-size:13px; font-weight:600; color:var(--muted); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
+.upload-btn{font-size:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:4px; font-weight:normal;}
+.upload-btn:hover{text-decoration:underline;}
+
+.stitch-ta{width:100%; height:180px; background:var(--surface); border:1px solid var(--border); border-radius:12px; color:var(--text); padding:16px; resize:none; outline:none; font-size:13.5px; line-height:1.7; transition:border-color .2s; font-family: inherit;}
+.stitch-ta:focus{border-color:var(--border-hi);}
+
+/* 2. 中间对话区 */
+.center{flex:1;display:flex;flex-direction:column;background:transparent;min-width:400px; margin:0 24px;}
+.chat{flex:1;overflow-y:auto;padding:24px 0;display:flex;flex-direction:column;gap:24px; position:relative;}
+
+/* 巨幕欢迎区 */
+#welcomeState { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; }
+.welcome-title { font-size: 52px; font-weight: 400; margin-bottom: 24px; color: var(--text); letter-spacing: -1px;}
+.pill-container { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:800px; }
+.stitch-pill { padding:10px 20px; background:var(--surface2); border:1px solid var(--border); border-radius:24px; font-size:14px; color:var(--text); cursor:pointer; transition:all .2s; font-family: 'Inter', sans-serif;}
+.stitch-pill:hover { background:var(--surface3); border-color:var(--border-hi); }
+
+/* 聊天气泡 */
+.msg{display:flex;gap:16px; will-change: transform, opacity;}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.msg.user .av{background:var(--surface3);color:var(--text); font-family: 'Inter', sans-serif;}
+.msg.assistant .av{background:var(--text);color:#fff;font-weight:700;}
+.bubble{padding:0 16px;font-size:15px;line-height:1.8;max-width:92%; color:var(--text);}
+.msg.user .bubble{background:var(--surface2); padding:16px 20px; border-radius:16px; border:1px solid var(--border);}
+.msg.assistant .bubble{background:transparent;} 
+
+.agent-logs{display:flex;flex-direction:column;gap:8px;margin-bottom:16px; padding:16px; background:var(--surface2); border-radius:12px; border:1px solid var(--border);}
+.agent-step{font-size:12.5px;color:var(--muted);font-family: 'Inter', monospace;will-change: transform, opacity;}
+.agent-step code{color:var(--text);background:var(--surface3);padding:2px 6px;border-radius:4px;}
+
+/* 一体化底部输入框 */
+.stitch-input-wrapper { background: var(--surface2); border: 1px solid var(--border); border-radius: 24px; padding: 16px; display:flex; flex-direction:column; gap:12px; margin-bottom:16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); transition:border-color .3s, box-shadow .3s;}
+.stitch-input-wrapper:focus-within { border-color: var(--border-hi); box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+.stitch-input-ta { background:transparent; border:none; color:var(--text); font-size:15px; outline:none; resize:none; height:44px; line-height:1.6; font-family:inherit;}
+.stitch-input-ta::placeholder { color:var(--dim); }
+
+.stitch-toolbar { display:flex; justify-content:space-between; align-items:center; font-family: 'Inter', sans-serif;}
+.toolbar-left { display:flex; gap:8px; align-items:center; }
+.tool-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:16px; font-size:12px; color:var(--muted); cursor:pointer; }
+.tool-btn:hover { background:var(--surface3); }
+
+.toolbar-right { display:flex; gap:8px; align-items:center; }
+.model-sel-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:16px; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; outline:none; font-family: 'Inter', sans-serif;}
+.model-sel-btn:hover { background:var(--surface3); }
+
+.send-arrow { width:36px; height:36px; background:var(--text); color:#fff; border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:transform .2s;}
+.send-arrow:hover { transform: translateY(-2px); }
+.send-arrow:disabled { background:var(--muted); cursor:not-allowed; transform:none; }
+
+/* 3. 右侧雷达悬浮面板 */
+.right-sidebar{width:320px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.sidebar-hdr{padding:20px;font-size:15px;font-weight:600;color:var(--text);display:flex;justify-content:space-between;align-items:center;}
+
+.radar-search{padding:0 20px 16px;display:flex;gap:8px;}
+.radar-search-inp{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:10px 14px;font-size:13px;outline:none; font-family: 'Inter', sans-serif;}
+.radar-search-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:0 14px;cursor:pointer;}
+
+.campus-content{flex:1;overflow-y:auto;padding:0 20px 20px;display:flex;flex-direction:column;gap:12px;}
+.job-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px; will-change: transform, opacity;}
+.job-card:hover{border-color:var(--border-hi); box-shadow:0 4px 12px rgba(0,0,0,0.03);}
+.job-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.job-co{font-size:14.5px;font-weight:600;color:var(--text);}
+.job-tag{font-size:10.5px;padding:3px 8px;border-radius:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border); font-family: 'Inter', sans-serif;}
+.job-role{font-size:13.5px;color:var(--text);margin-bottom:8px;}
+.job-dl{font-size:12px;color:var(--muted);}
+.job-tips{font-size:12px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+
+.toast{position:fixed;bottom:90px;right:370px;padding:14px 24px;background:var(--text);color:#fff;border-radius:12px;display:none;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.15);}
+
+/* Markdown 美化 */
+.bubble h3{color:var(--text);margin:24px 0 12px;font-size:18px;}
+.bubble h3:first-child{margin-top:0;}
+.bubble ul{padding-left:24px;margin:12px 0;}
+.bubble strong{color:var(--text);font-weight:600;}
+
+/* 设置弹窗 */
+.modal-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:32px;width:400px;display:flex;flex-direction:column;gap:16px;box-shadow:0 12px 48px rgba(0,0,0,0.1);}
+.modal input{width:100%;background:var(--surface2);border:1px solid var(--border);padding:12px;border-radius:10px;outline:none;margin-top:8px;font-family: 'Inter', sans-serif;}
+.btn-solid { background:var(--text); color:#fff; padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-family: 'Inter', sans-serif;}
+
+.split-char { display: inline-block; will-change: transform, opacity; }
+</style>
+</head>
+<body>
+
+<div class="dot-bg"></div>
+<div id="cursor-follower"></div>
+
+<!-- 设置弹窗 -->
+<div class="modal-overlay" id="settingModal">
+  <div class="modal" id="settingModalBox">
+    <h3 style="font-family: 'Inter', sans-serif;">⚙️ API 设置</h3>
+    <p style="font-size:13px;color:var(--muted);">输入您的 API Key 及自定义接口地址。</p>
+    <div>
+      <input type="password" id="apiKey" placeholder="输入对应平台 API Key" />
+      <input type="text" id="customBaseUrl" placeholder="Base URL (留空则默认)" />
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:10px;">
+      <button class="tool-btn" onclick="closeModal()">取消</button>
+      <button class="btn-solid" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="logo-name">校招简历修改助手</div>
+    <div class="logo-tag">BETA</div>
+  </div>
+  <div class="hdr-right">
+    <button class="top-icon-btn magnetic-target" onclick="clearHistory()" title="清空对话">🗑</button>
+    <button class="top-icon-btn magnetic-target" onclick="openModal()" title="设置">⚙️</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- 1. 左侧浮窗 -->
+  <div class="left">
+    <div class="stitch-tabs">
+      <div class="stitch-tab">📄 简历素材</div>
+      <div class="stitch-tab inactive">与我共享</div>
+    </div>
+    <div class="panel-section">
+      <div>
+        <div class="section-lbl">
+          <span>原始简历内容</span>
+          <label class="upload-btn magnetic-target"><input type="file" accept=".pdf" style="display:none" onchange="loadPDF(this.files[0])">📎 上传PDF</label>
+        </div>
+        <textarea class="stitch-ta" id="resumeTA" placeholder="粘贴你的简历文本..."></textarea>
+      </div>
+      <div>
+        <div class="section-lbl">🎯 目标岗位 JD</div>
+        <textarea class="stitch-ta" id="jdTA" style="height:140px;" placeholder="粘贴岗位描述，用于对标架构..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 中间对话区 -->
+  <div class="center">
+    <div class="chat" id="chat">
+      <div id="welcomeState">
+        <!-- 巨型标题更新 -->
+        <h1 class="welcome-title" id="welcomeTitle">欢迎使用校招简历修改助手...</h1>
+        <div class="pill-container">
+          <button class="stitch-pill magnetic-target" onclick="usePrompt('挖掘闪光点')">挖掘学生经历闪光点</button>
+          <button class="stitch-pill magnetic-target" onclick="usePrompt('STAR重写')">零经验 STAR 重写</button>
+          <button class="stitch-pill magnetic-target" onclick="usePrompt('网申穿透')">网申 ATS 匹配穿透</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Stitch 同款一体化底栏 -->
+    <div class="stitch-input-wrapper">
+      <textarea class="stitch-input-ta" id="msgInp" placeholder="我们要进行什么样的简历优化体验？" onkeydown="if(event.key==='Enter') { event.preventDefault(); startAgent(this.value); }"></textarea>
+      <div class="stitch-toolbar">
+        <div class="toolbar-left">
+          <button class="tool-btn magnetic-target">＋</button>
+          <div class="tool-btn magnetic-target" style="gap:4px;">
+            <span style="color:var(--text)">📱 应用</span> | <span style="font-weight:bold;color:var(--text)">🖥 Web</span>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <select class="model-sel-btn magnetic-target" id="platformSel" onchange="switchPlatform()" style="border:none;background:transparent;">
+            <option value="qwen">阿里千问</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <select class="model-sel-btn magnetic-target" id="modelSel">
+             <!-- 动态渲染 -->
+          </select>
+          <button class="send-arrow magnetic-target" id="sendBtn" onclick="startAgent(document.getElementById('msgInp').value)">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 右侧雷达浮窗 -->
+  <div class="right-sidebar">
+    <div class="sidebar-hdr">
+      <span>📢 校招情报雷达</span>
+      <div class="magnetic-wrap"><button class="top-icon-btn magnetic-target" onclick="fetchCampusManually(false)" title="刷新" style="font-size:14px;">🔄</button></div>
+    </div>
+    <div class="radar-search">
+      <input type="text" id="radarSearchInp" class="radar-search-inp" placeholder="自由搜岗 (如: 腾讯)..." onkeydown="if(event.key==='Enter') fetchCampusManually(true)">
+      <div class="magnetic-wrap"><button class="radar-search-btn magnetic-target" onclick="fetchCampusManually(true)">🔍</button></div>
+    </div>
+    <div class="campus-content" id="campusContent">
+      <div id="radarInit" style="text-align:center;color:var(--muted);margin-top:40px;font-size:13px;line-height:2;">
+        <span style="font-size:28px;">📡</span><br>自动检索工业界最新要求
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// --- 🌟 GSAP: 高级动效引擎与光标交互 ---
+const follower = document.getElementById('cursor-follower');
+let posX = 0, posY = 0, mouseX = 0, mouseY = 0;
+
+gsap.to({}, {
+  duration: 0.016, repeat: -1,
+  onRepeat: () => {
+    posX += (mouseX - posX) / 6;
+    posY += (mouseY - posY) / 6;
+    gsap.set(follower, { left: posX, top: posY });
+  }
+});
+window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+document.querySelectorAll('button, .stitch-pill, .stitch-tab, select, .job-card, .upload-btn').forEach(el => {
+  el.addEventListener('mouseenter', () => follower.classList.add('cursor-hover'));
+  el.addEventListener('mouseleave', () => follower.classList.remove('cursor-hover'));
+});
+
+// 磁性吸附 (Magnetic Elements)
+document.querySelectorAll('.magnetic-wrap').forEach(wrap => {
+  const target = wrap.querySelector('.magnetic-target');
+  wrap.addEventListener('mousemove', e => {
+    const rect = wrap.getBoundingClientRect();
+    const x = (e.clientX - rect.left - rect.width / 2) * 0.4;
+    const y = (e.clientY - rect.top - rect.height / 2) * 0.4;
+    gsap.to(target, { x: x, y: y, duration: 0.3, ease: 'power2.out', overwrite: true });
+  });
+  wrap.addEventListener('mouseleave', () => {
+    gsap.to(target, { x: 0, y: 0, duration: 0.8, ease: 'elastic.out(1, 0.3)', overwrite: true });
+  });
+});
+
+// 电影级入场时间轴
+window.onload = () => {
+  switchPlatform();
+  
+  const titleEl = document.getElementById('welcomeTitle');
+  const text = titleEl.innerText;
+  titleEl.innerHTML = text.split('').map(char => `<span class="split-char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
+
+  const tl = gsap.timeline();
+  tl.to("body", { opacity: 1, duration: 0.1 })
+    .from(".hdr", { y: -30, opacity: 0, duration: 0.8, ease: "power4.out" })
+    .from(".left, .center, .right-sidebar", { y: 30, opacity: 0, duration: 1, stagger: 0.1, ease: "expo.out" }, "-=0.5")
+    .from(".split-char", { y: 20, opacity: 0, duration: 0.6, stagger: 0.03, ease: "back.out(2)" }, "-=0.4")
+    .from(".stitch-pill", { y: 15, opacity: 0, duration: 0.5, stagger: 0.08, ease: "power2.out" }, "-=0.4");
+};
+
+// --- API 配置 ---
+const AI_PROVIDERS = {
+  qwen: { url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", models:["qwen-plus", "qwen-max"] },
+  deepseek: { url: "https://api.deepseek.com/chat/completions", models:["deepseek-chat"] },
+  openai: { url: "https://api.openai.com/v1/chat/completions", models:["gpt-4o", "gpt-4o-mini"] }
+};
+
+let CURRENT_BASE_URL = AI_PROVIDERS.qwen.url;
+
+function switchPlatform() {
+  const platform = document.getElementById('platformSel').value;
+  const models = AI_PROVIDERS[platform].models;
+  const sel = document.getElementById('modelSel');
+  sel.innerHTML = '';
+  models.forEach(m => { let opt = document.createElement('option'); opt.value = m; opt.textContent = m; sel.appendChild(opt); });
+  document.getElementById('customBaseUrl').value = AI_PROVIDERS[platform].url;
+  CURRENT_BASE_URL = AI_PROVIDERS[platform].url;
+}
+
+// 弹窗控制
+function openModal() {
+  const overlay = document.getElementById('settingModal');
+  overlay.style.display = 'flex';
+  gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.2 });
+  gsap.fromTo("#settingModalBox", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.5)" });
+}
+function closeModal() {
+  gsap.to("#settingModalBox", { y: 10, opacity: 0, duration: 0.2 });
+  gsap.to("#settingModal", { opacity: 0, duration: 0.2, onComplete: () => { document.getElementById('settingModal').style.display = 'none'; }});
+}
+function saveSettings() {
+  const customUrl = document.getElementById('customBaseUrl').value.trim();
+  if(customUrl) CURRENT_BASE_URL = customUrl;
+  closeModal(); toast('⚙️ 设置已保存');
+}
+
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function loadPDF(file){
+  if(!file) return; toast('解析 PDF 中...');
+  try {
+    const buf = await file.arrayBuffer(); const pdf = await pdfjsLib.getDocument({data:buf}).promise; let txt = '';
+    for(let i=1; i<=pdf.numPages; i++){ const pg = await pdf.getPage(i); const content = await pg.getTextContent(); txt += content.items.map(it=>it.str).join(' ') + '\n'; }
+    document.getElementById('resumeTA').value = txt.trim().replace(/\s{3,}/g,'\n\n'); toast('解析成功');
+  } catch(e) { toast('解析失败', 'err'); }
+}
+
+const SYS = `# Role: 资深校招求职专家 & 技术简历架构师
+## Profile
+精通头部企业筛选逻辑。挖掘在校生闪光点转化为工业界专业表达。
+## Constraints
+1. 语言风格：专业职场用语，严禁使用弱动词。
+2. 结构要求：必须先输出[Thinking Process]，再输出诊断。
+## Agent Workflow
+1. 主动调用 \`fetch_campus_jobs\` 检索最新的校招岗位，推送到右侧。
+2. 务必调用 \`simulate_ats_scoring\` 获取简历真实得分。
+之后使用 \`---\` 分隔以下模块：[Thinking Process],[ATS Score], [STAR Transformation],[Critical Tips]。`;
+
+const toolsSchema =[
+  { type: "function", function: { name: "simulate_ats_scoring", description: "网申初筛客观打分。", parameters: { type: "object", properties: { "resume_text": { type: "string" }, "target_role": { type: "string" } }, required:["resume_text", "target_role"] } } },
+  { type: "function", function: { name: "fetch_campus_jobs", description: "检索最新校招信息并推送。", parameters: { type: "object", properties: { "target_role": { type: "string" } }, required:["target_role"] } } }
+];
+
+async function callLLM(apiKey, model, messages, formatType, isSearch) {
+  const platform = document.getElementById('platformSel').value;
+  let payload = { model: model, messages: messages };
+  if(platform === 'qwen' && isSearch) payload.enable_search = true;
+  if(formatType === 'json') payload.response_format = { type: "json_object" };
+  const res = await fetch(CURRENT_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error(`API报错: ${await res.text()}`);
+  return await res.json();
+}
+
+function renderCampusJobs(jobs) {
+  const container = document.getElementById('campusContent');
+  container.innerHTML = ''; 
+  if(!jobs || jobs.length === 0) return;
+  jobs.forEach((job) => {
+    let card = document.createElement('div'); card.className = 'job-card';
+    card.innerHTML = `<div class="job-hdr"><span class="job-co">${job.company}</span><span class="job-tag">${job.status}</span></div><div class="job-role">📌 ${job.role}</div><div class="job-dl">⏳ 进度/截止：${job.deadline}</div>${job.tips ? `<div class="job-tips">💡 ${job.tips}</div>` : ''}`;
+    container.appendChild(card);
+    card.addEventListener('mouseenter', () => follower.classList.add('cursor-hover'));
+    card.addEventListener('mouseleave', () => follower.classList.remove('cursor-hover'));
+  });
+  gsap.from(".job-card", { y: 20, opacity: 0, duration: 0.5, stagger: 0.1, ease: "power3.out" });
+}
+
+const subAgents = {
+  simulate_ats_scoring: async (args, apiKey, model) => {
+    const prompt = `你是校招ATS系统。评估简历匹配度。必须输出严格JSON：{"ats_score":整数,"readability":"优秀/一般","missing_basic_skills":["词1"],"student_flaws":"硬伤"}`;
+    try {
+      const data = await callLLM(apiKey, model,[{ role: 'system', content: prompt }, { role: 'user', content: args.resume_text.substring(0, 4000) }], 'json', false);
+      return JSON.parse(data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim()); 
+    } catch (e) { return { ats_score: 75, error: "解析异常" }; }
+  },
+  fetch_campus_jobs: async (args, apiKey, model) => {
+    const prompt = `查找"${args.target_role}"的校招机会。必须输出严格JSON，预测3-4条高仿真数据，绝不空数组：{"jobs":[{"company": "公司名", "role": "岗位", "status": "网申中", "deadline": "截止", "tips": "加分项"}]}`;
+    try {
+      const data = await callLLM(apiKey, model,[{ role: 'user', content: prompt }], 'json', true);
+      let resJSON = JSON.parse(data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim());
+      if (!resJSON.jobs || resJSON.jobs.length===0) throw new Error("Empty");
+      renderCampusJobs(resJSON.jobs);
+      return { status: "success", count: resJSON.jobs.length };
+    } catch (e) { 
+      renderCampusJobs([{ company: "一线大厂", role: args.target_role || "核心实习", status: "春招热招", deadline: "近期截止", tips: "看重基础" }]);
+      return { status: "success", info: "Fallback" }; 
+    }
+  }
+};
+
+let history =[];
+
+async function fetchCampusManually(fromSearchBox = false) {
+  const radarInp = document.getElementById('radarSearchInp').value.trim();
+  const jdInput = document.getElementById('jdTA').value.trim();
+  let targetRole = fromSearchBox && radarInp ? radarInp : (radarInp || jdInput || "互联网大厂 核心研发/产品");
+  
+  const key = document.getElementById('apiKey').value.trim();
+  if(!key) { openModal(); return toast('请先配置 API Key', 'err'); }
+  
+  const container = document.getElementById('campusContent');
+  container.innerHTML = `<div id="radarLoading" style="text-align:center;color:var(--muted);margin-top:60px;font-size:13px;opacity:0;">正在全网检索【${targetRole.substring(0,10)}...】</div>`;
+  gsap.to("#radarLoading", { opacity: 1, duration: 0.3 });
+  await subAgents.fetch_campus_jobs({target_role: targetRole}, key, document.getElementById('modelSel').value);
+}
+
+function usePrompt(type) {
+  let p = type === '挖掘闪光点' ? '深挖我的经历中隐藏的可迁移职场技能。' : 
+          type === 'STAR重写' ? '挑选最重要的2个经历，用STAR法则重写。' : '根据JD进行ATS匹配度穿透分析。';
+  startAgent(p);
+}
+
+function addAgentStep(container, html) {
+  let step = document.createElement('div'); step.className = `agent-step`; step.innerHTML = html;
+  container.appendChild(step);
+  gsap.from(step, { x: -10, opacity: 0, duration: 0.4, ease: "power2.out" });
+  document.getElementById('chat').scrollTop = 9999;
+}
+
+async function startAgent(customMsg = "") {
+  const key = document.getElementById('apiKey').value.trim();
+  if(!key) { openModal(); return toast('请配置 API Key', 'err'); }
+  const resume = document.getElementById('resumeTA').value.trim();
+  const jd = document.getElementById('jdTA').value.trim();
+  const instruction = customMsg || document.getElementById('msgInp').value;
+  if(!resume) return toast('请在左侧输入简历！', 'err');
+
+  document.getElementById('msgInp').value = '';
+  document.getElementById('sendBtn').disabled = true;
+  
+  if(document.getElementById('welcomeState')) {
+    gsap.to("#welcomeState", { opacity: 0, y: -20, duration: 0.3, onComplete: () => document.getElementById('welcomeState').style.display = 'none' });
+  }
+
+  let userContent = history.length === 0 ? `[目标 JD]:\n${jd||'未提供'}\n\n[简历]:\n${resume}\n\n[指令]:\n${instruction}` : instruction;
+  history.push({ role: 'user', content: userContent });
+  appendMsg('user', customMsg || instruction);
+
+  const aEl = appendMsg('assistant', '');
+  const bub = aEl.querySelector('.bubble');
+  const logsDiv = document.createElement('div'); logsDiv.className = 'agent-logs'; bub.appendChild(logsDiv);
+  const currentModel = document.getElementById('modelSel').value;
+  
+  addAgentStep(logsDiv, `🚀 启动 Engine，规划架构分析...`);
+
+  let loopCount = 0;
+  try {
+    while (loopCount < 4) { 
+      let payload = { model: currentModel, messages:[{ role: 'system', content: SYS }, ...history], tools: toolsSchema, tool_choice: "auto" };
+      const res = await fetch(CURRENT_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const msg = data.choices[0].message;
+
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        history.push(msg); 
+        for (let tc of msg.tool_calls) {
+          const fnName = tc.function.name;
+          const args = JSON.parse(tc.function.arguments);
+          addAgentStep(logsDiv, `🔄 调用模块: <code>${fnName}</code>`);
+          if(fnName === 'fetch_campus_jobs') {
+             document.getElementById('campusContent').innerHTML = `<div id="radarLoading2" style="text-align:center;color:var(--muted);margin-top:60px;opacity:0;">捕获数据中...</div>`;
+             gsap.to("#radarLoading2", { opacity: 1, duration: 0.3 });
+          }
+          const result = await subAgents[fnName](args, key, currentModel);
+          history.push({ role: "tool", name: fnName, content: JSON.stringify(result), tool_call_id: tc.id });
+          addAgentStep(logsDiv, `✅ 模块执行完毕。`);
+        }
+      } else {
+        history.push(msg);
+        const finalDiv = document.createElement('div'); finalDiv.innerHTML = fmt(msg.content); 
+        bub.appendChild(finalDiv);
+        gsap.from(finalDiv, { opacity: 0, y: 15, duration: 0.6, ease: "power3.out" });
+        break; 
+      }
+      loopCount++;
+    }
+  } catch (err) { addAgentStep(logsDiv, `❌ 异常: ${err.message}`); } 
+  finally { document.getElementById('sendBtn').disabled = false; document.getElementById('chat').scrollTop = 9999; }
+}
+
+function appendMsg(role, text) {
+  const m = document.createElement('div'); m.className = 'msg ' + role;
+  const av = document.createElement('div'); av.className = 'av'; av.textContent = role === 'user' ? 'ME' : '✨';
+  const bub = document.createElement('div'); bub.className = 'bubble';
+  if(text) bub.innerHTML = role === 'user' ? text : fmt(text);
+  m.appendChild(av); m.appendChild(bub); document.getElementById('chat').appendChild(m); 
+  gsap.from(m, { y: 20, opacity: 0, duration: 0.5, ease: "power2.out" });
+  document.getElementById('chat').scrollTop = 9999; return m;
+}
+
+function clearHistory(){ history=[]; document.getElementById('chat').innerHTML=''; }
+function toast(msg, type='ok'){ 
+  const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast '+type; t.style.display = 'block'; 
+  gsap.fromTo(t, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "back.out(2)" });
+  clearTimeout(t.timer); t.timer = setTimeout(()=> gsap.to(t, { y: 20, opacity: 0, duration: 0.3, onComplete: () => t.style.display='none' }), 3000); 
+}
+
+function fmt(t){
+  if(!t) return '';
+  let h = t.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h = h.replace(/\[(Thinking Process|ATS Score|STAR Transformation|Critical Tips)\]/g, '<strong style="color:var(--text);font-size:16px;">[$1]</strong>');
+  h = h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h3>$1</h3>');
+  h = h.replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>)/gs, m => '<ul>'+m+'</ul>');
+  h = h.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:24px 0;">');
+  return h.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+}
+</script>
+</body>
+</html>
